@@ -9,12 +9,12 @@ interface ResourceItemProps {
 
 export default function ResourceItem(props: ResourceItemProps) {
 
-    const { resourceItem } = props;
+    const { resourceCategory, resourceItem } = props;
 
     return (
         <li key={resourceItem.name} className="flex items-center justify-between py-2 px-4">
             <div className="flex items-center">
-                <Image src={`/img/items/resources/${resourceItem.name}.webp`} alt="Charcoal" height={40} width={40} />
+                <Image src={`/img/items/${resourceCategory}/${resourceItem.name}.webp`} alt={resourceItem.name} height={40} width={40} />
                 <p>{resourceItem.name}</p>
             </div>
             <div className="flex items-center">
