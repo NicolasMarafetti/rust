@@ -1,3 +1,5 @@
+"use client";
+
 import HomeFooter from "./components/HomeFooter";
 import HomeMain from "./components/HomeMain";
 

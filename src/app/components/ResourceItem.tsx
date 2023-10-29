@@ -14,7 +14,7 @@ export default function ResourceItem(props: ResourceItemProps) {
     return (
         <li key={resourceItem.name} className="flex items-center justify-between py-1 px-10">
             <div className="flex items-center">
-                <Image className="mr-5" src={`/img/items/${resourceCategory}/${resourceItem.name}.webp`} alt={resourceItem.name} height={30} width={30} />
+                <Image className="mr-5" src={resourceItem.imageUrl} alt={resourceItem.name} height={30} width={30} />
                 <p className="text-amber-600 uppercase text-sm font-bold">{resourceItem.name}</p>
             </div>
             <div className="flex items-center">

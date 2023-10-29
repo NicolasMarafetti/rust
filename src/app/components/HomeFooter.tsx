@@ -1,13 +1,20 @@
-import { resources } from '@/const/resources';
-import React from 'react'
+import React from 'react';
+import { getItemsFromRustlabs } from '@/utils/rust-lab-api';
+import { Resources } from '@/const/resources';
 import ResourceItem from './ResourceItem';
 
-export default function HomeFooter() {
+async function getWebpageContent() {
+    return await getItemsFromRustlabs();
+}
+
+export default async function HomeFooter() {
+
+    const resources: Resources = await getWebpageContent();
 
     const resourcesKeys = Object.keys(resources);
 
     return (
-        <footer className="bg-black/70 max-h-96 overflow-y-auto py-5 px-4 fixed bottom-0 left-0 right-0 text-white">
+        <footer className="bg-black/70 max-h-96 overflow-y-auto py-5 px-4 text-white">
             <ul className="flex items-start justify-around flex-wrap">
                 {
                     resourcesKeys.map((resourceCategory) => {
