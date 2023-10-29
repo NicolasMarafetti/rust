@@ -1,7 +1,7 @@
 "use client";
 
-import HomeFooter from "./components/HomeFooter";
-import HomeMain from "./components/HomeMain";
+import HomeFooter from "../components/HomeFooter";
+import HomeMain from "../components/HomeMain";
 
 export default function Home() {
     return (

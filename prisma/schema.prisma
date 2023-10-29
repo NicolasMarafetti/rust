@@ -17,10 +17,23 @@ model Item {
   imageUrl   String
   name       String
   scrapValue Int
+  saleItems  Shopping[]   @relation("SaleItemRelation")
+  costItems  Shopping[]   @relation("CostItemRelation")
 }
 
 model ItemCategory {
   id   String @id @default(auto()) @map("_id") @db.ObjectId
   name String
   Item Item[]
+}
+
+model Shopping {
+  id               String @id @default(auto()) @map("_id") @db.ObjectId
+  shopName        String
+  saleItem         Item   @relation("SaleItemRelation", fields: [saleItemId], references: [id])
+  saleItemId       String @db.ObjectId
+  saleItemQuantity Int
+  costItem         Item   @relation("CostItemRelation", fields: [costItemId], references: [id])
+  costItemId       String @db.ObjectId
+  costItemQuantity Int
 }

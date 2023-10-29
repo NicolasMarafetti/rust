@@ -1,9 +1,13 @@
 import { Resources } from "@/const/resources";
-import { PrismaClient } from "@prisma/client";
+import { Item, PrismaClient } from "@prisma/client";
 
 const prisma = new PrismaClient()
 
-export const getItemsFromDatabase = async (): Promise<Resources> => {
+export const getItemsFromDatabase = async (): Promise<Item[]> => {
+    return await prisma.item.findMany();
+}
+
+export const getItemsFromDatabaseOrderedByCategory = async (): Promise<Resources> => {
     const items = await prisma.item.findMany({
         include: {
             category: true
@@ -14,7 +18,7 @@ export const getItemsFromDatabase = async (): Promise<Resources> => {
 
     items.forEach((item) => {
 
-        if(typeof resources[item.category.name] === 'undefined') resources[item.category.name] = [];
+        if (typeof resources[item.category.name] === 'undefined') resources[item.category.name] = [];
 
         resources[item.category.name].push({
             id: item.id,
@@ -74,4 +78,14 @@ export const saveItemsInDatabase = async (items: Resources) => {
     }
 
     await Promise.all(promises);
+}
+
+export const searchItemIdFromName = async (itemName: string): Promise<string | null> => {
+    const item = await prisma.item.findFirst({
+        where: {
+            name: itemName
+        }
+    });
+
+    return item?.id || null;
 }

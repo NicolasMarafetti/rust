@@ -2,13 +2,13 @@ import React from 'react';
 import { Resources } from '@/const/resources';
 import ResourceItem from './ResourceItem';
 import { PrismaClient } from '@prisma/client';
-import { getItemsFromDatabase } from '@/utils/items';
+import { getItemsFromDatabaseOrderedByCategory } from '@/utils/items';
+import { getItemsScrapPriceFromRustLabsToDatabase, getShoppingListFromRustLabs } from '@/utils/rust-lab-api';
 
 const prisma = new PrismaClient()
 
 async function getWebpageContent() {
-
-    const items = await getItemsFromDatabase();
+    const items = await getItemsFromDatabaseOrderedByCategory();
 
     return items;
 }
