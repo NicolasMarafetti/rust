@@ -1,10 +1,16 @@
 import React from 'react';
-import { getItemsFromRustlabs } from '@/utils/rust-lab-api';
 import { Resources } from '@/const/resources';
 import ResourceItem from './ResourceItem';
+import { PrismaClient } from '@prisma/client';
+import { getItemsFromDatabase } from '@/utils/items';
+
+const prisma = new PrismaClient()
 
 async function getWebpageContent() {
-    return await getItemsFromRustlabs();
+
+    const items = await getItemsFromDatabase();
+
+    return items;
 }
 
 export default async function HomeFooter() {
