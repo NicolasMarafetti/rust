@@ -9,9 +9,8 @@ const config: Config = {
   theme: {
     extend: {
       backgroundImage: {
-        'gradient-radial': 'radial-gradient(var(--tw-gradient-stops))',
-        'gradient-conic':
-          'conic-gradient(from 180deg at 50% 50%, var(--tw-gradient-stops))',
+        'background': "url('/img/background.webp')",
+        'scrap': "url('https://static.wikia.nocookie.net/play-rust/images/0/03/Scrap_icon.png/revision/latest?cb=20170721095804')"
       },
     },
   },
