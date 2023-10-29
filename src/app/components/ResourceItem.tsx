@@ -12,10 +12,10 @@ export default function ResourceItem(props: ResourceItemProps) {
     const { resourceCategory, resourceItem } = props;
 
     return (
-        <li key={resourceItem.name} className="flex items-center justify-between py-2 px-4">
+        <li key={resourceItem.name} className="flex items-center justify-between py-1 px-10">
             <div className="flex items-center">
-                <Image src={`/img/items/${resourceCategory}/${resourceItem.name}.webp`} alt={resourceItem.name} height={40} width={40} />
-                <p>{resourceItem.name}</p>
+                <Image className="mr-5" src={`/img/items/${resourceCategory}/${resourceItem.name}.webp`} alt={resourceItem.name} height={30} width={30} />
+                <p className="text-amber-600 uppercase text-sm font-bold">{resourceItem.name}</p>
             </div>
             <div className="flex items-center">
                 <span className="mr-1">{resourceItem.scrapValue}</span>

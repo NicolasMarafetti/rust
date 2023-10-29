@@ -14,9 +14,9 @@ export default function HomeFooter() {
 
                         const resource = resources[resourceCategory]!;
                         return (
-                            <li key={resourceCategory} className="w-full lg:w-[22vw] my-2">
-                                <h2 className="bg-[#242425] font-bold px-4 py-1 uppercase text-gray-500">{resourceCategory}</h2>
-                                <ul className="bg-[#1a1a1c] h-64 overflow-y-scroll">
+                            <li key={resourceCategory} className="w-full lg:w-[22vw] my-5">
+                                <h2 className="bg-[#242425] font-bold px-10 py-3 uppercase text-gray-500">{resourceCategory}</h2>
+                                <ul className="bg-[#1a1a1c] h-64 overflow-y-scroll py-3">
                                     {resource.map((resourceItem, index) => <ResourceItem key={index} resourceCategory={resourceCategory} resourceItem={resourceItem} />)}
                                 </ul>
                             </li>
