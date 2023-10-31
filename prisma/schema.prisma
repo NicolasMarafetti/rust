@@ -10,15 +10,36 @@ datasource db {
   url      = env("DATABASE_URL")
 }
 
+model Craft {
+  id                  String            @id @default(auto()) @map("_id") @db.ObjectId
+  craftedItem         Item              @relation(fields: [craftedItemId], references: [id])
+  craftedItemId       String            @db.ObjectId
+  craftedItemQuantity Int
+  CraftIngredient     CraftIngredient[]
+  duration            Int
+  workbenchLevel      Int
+}
+
+model CraftIngredient {
+  id                 String @id @default(auto()) @map("_id") @db.ObjectId
+  craft              Craft  @relation(fields: [craftId], references: [id], onDelete: Cascade)
+  craftId            String @db.ObjectId
+  ingredient         Item   @relation(fields: [ingredientId], references: [id])
+  ingredientId       String @db.ObjectId
+  ingredientQuantity Int
+}
+
 model Item {
-  id         String       @id @default(auto()) @map("_id") @db.ObjectId
-  category   ItemCategory @relation(fields: [categoryId], references: [id])
-  categoryId String       @db.ObjectId
-  imageUrl   String
-  name       String
-  scrapValue Int
-  saleItems  Shopping[]   @relation("SaleItemRelation")
-  costItems  Shopping[]   @relation("CostItemRelation")
+  id              String            @id @default(auto()) @map("_id") @db.ObjectId
+  category        ItemCategory      @relation(fields: [categoryId], references: [id])
+  categoryId      String            @db.ObjectId
+  imageUrl        String
+  name            String
+  scrapValue      Float
+  saleItems       Shopping[]        @relation("SaleItemRelation")
+  costItems       Shopping[]        @relation("CostItemRelation")
+  Craft           Craft[]
+  CraftIngredient CraftIngredient[]
 }
 
 model ItemCategory {
@@ -29,7 +50,7 @@ model ItemCategory {
 
 model Shopping {
   id               String @id @default(auto()) @map("_id") @db.ObjectId
-  shopName        String
+  shopName         String
   saleItem         Item   @relation("SaleItemRelation", fields: [saleItemId], references: [id])
   saleItemId       String @db.ObjectId
   saleItemQuantity Int

@@ -5,6 +5,63 @@ import { Item, PrismaClient } from '@prisma/client';
 
 const prisma = new PrismaClient();
 
+async function createCraftIngredient(ingredientName: string, ingredientSelector: any, craft: any): Promise<void> {
+    const ingredientId = await searchItemIdFromName(ingredientName);
+    if (!ingredientId) return;
+
+    const ingredientQuanitySpan = ingredientSelector.querySelector('.text-in-icon')?.textContent || null;
+    const ingredientQuantity = ingredientQuanitySpan ? parseInt(ingredientQuanitySpan.trim().replace('×', '')) : 1;
+
+    try {
+        await prisma.craftIngredient.create({
+            data: {
+                craft: {
+                    connect: {
+                        id: craft.id
+                    }
+                },
+                ingredient: {
+                    connect: {
+                        id: ingredientId
+                    }
+                },
+                ingredientQuantity: ingredientQuantity
+            }
+        })
+    } catch (error) {
+        console.log(error);
+        console.log("ingredientSelector: ", ingredientSelector);
+        console.log("ingredientQuanitySpan: ", ingredientQuanitySpan);
+        console.log("craft: ", craft);
+        console.log("ingredientQuantity: ", ingredientQuantity);
+    }
+}
+
+async function createCraftAndIngredients(craftedItemId: string, craftedItemQuantity: number, duration: number, workbenchLevel: number, exchangeTr: any): Promise<void> {
+    const craft = await prisma.craft.create({
+        data: {
+            craftedItem: {
+                connect: {
+                    id: craftedItemId
+                }
+            },
+            craftedItemQuantity,
+            duration,
+            workbenchLevel
+        }
+    })
+
+    // Ingredients
+    let ingredientPromises: Promise<any>[] = [];
+    const ingredientsSelectors = exchangeTr.querySelectorAll('td:nth-child(3) > a');
+    ingredientsSelectors.forEach((ingredientSelector: any) => {
+        const ingredientName: string = ingredientSelector.querySelector('img')?.getAttribute('alt') || '';
+        if (ingredientName) {
+            ingredientPromises.push(createCraftIngredient(ingredientName, ingredientSelector, craft));
+        }
+    })
+}
+
 async function createPrismaShoppingFromRustlabsData(shopName: string, saleItemName: string, saleItemQuantity: number, costItemName: string, costItemQuantity: number): Promise<void> {
     const saleItemId = await searchItemIdFromName(saleItemName);
     const costItemId = await searchItemIdFromName(costItemName);
@@ -64,6 +121,82 @@ async function getCategoryItemsFromRustlabs(category: string): Promise<Resource[
     })
 
     return items;
+}
+
+function getCraftDurationFromRustLabs(exchangeTr: any, craftedItemId: string): number {
+    const durationTd = exchangeTr.querySelector('td:nth-child(4)');
+    const rawDuration = durationTd.textContent || null;
+    if (!rawDuration) {
+        console.log("duration not found");
+        return 0;
+    }
+    let matches = rawDuration.match(/\d+/g);
+
+    if (matches) {
+        if (matches.length > 1) {
+            return parseInt(matches[1])
+        } else {
+            return parseInt(matches[0])
+        }
+    } else {
+        console.log("Number not found");
+        console.log("craftedItemId: ", craftedItemId);
+        return 0;
+    }
+}
+
+export const getCraftsFromRustlabs = async () => {
+
+    // Clean the craft databases
+    await prisma.craft.deleteMany();
+
+    const items = await getItemsFromDatabase();
+
+    let promises: Promise<void>[] = [];
+
+    items.forEach(item => {
+        promises.push(getItemCraftFromRustLabsToDatabase(item));
+    })
+
+    await Promise.all(promises);
+}
+
+async function getItemCraftFromRustLabsToDatabase(item: Item): Promise<void> {
+    const pageUrl = `https://rustlabs.com/item/${getItemUrlName(item.name)}#tab=craft`;
+
+    const response = await fetch(pageUrl);
+    const data = await response.text();
+
+    const dom = new JSDOM(data);
+
+    const exchangeDiv = dom.window.document.querySelector('div[data-name="craft"]');
+
+    if (!exchangeDiv) return;
+
+    const exchangesTrs = exchangeDiv.querySelectorAll('tbody tr');
+
+    let promises: Promise<any>[] = [];
+
+    Array.from(exchangesTrs).forEach((exchangeTr) => {
+        const bluePrintName = exchangeTr.querySelector('.item-cell img')?.getAttribute('alt') || '';
+
+        if (!bluePrintName.includes(item.name)) {
+            // Crafted item informations
+            const quantitySpan = exchangeTr.querySelector('.item-cell .text-in-icon')?.textContent || null;
+            const craftedQuantity = quantitySpan ? parseInt(quantitySpan.trim().replace('×', '')) : 1;
+
+            // Duration
+            const craftDuration = getCraftDurationFromRustLabs(exchangeTr, bluePrintName);
+
+            // Workbench level
+            let workbenchLevel = exchangeTr.querySelector('td:nth-child(5) .text-in-icon')?.textContent || 0;
+            if (typeof workbenchLevel === 'string') workbenchLevel = workbenchLevel.length;
+
+            promises.push(createCraftAndIngredients(item.id, craftedQuantity, craftDuration, workbenchLevel, exchangeTr))
+        }
+    });
+
+    await Promise.all(promises);
 }
 
 export async function getItemsFromRustlabs(): Promise<Resources> {
