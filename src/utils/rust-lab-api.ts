@@ -145,20 +145,22 @@ function getCraftDurationFromRustLabs(exchangeTr: any, craftedItemId: string): n
     }
 }
 
-export const getCraftsFromRustlabs = async () => {
+export const getCraftsFromRustlabs = async (getItemCraftsAlreadyRecovered: boolean = true) => {
 
     // Clean the craft databases
-    await prisma.craft.deleteMany();
+    if (getItemCraftsAlreadyRecovered) await prisma.craft.deleteMany();
 
-    const items = await getItemsFromDatabase();
+    const items = await prisma.item.findMany({
+        include: {
+            Craft: true
+        }
+    });
 
-    let promises: Promise<void>[] = [];
+    const itemsToCheck = getItemCraftsAlreadyRecovered ? items : items.filter(item => item.Craft.length === 0);
 
-    items.forEach(item => {
-        promises.push(getItemCraftFromRustLabsToDatabase(item));
-    })
-
-    await Promise.all(promises);
+    for (const item of itemsToCheck) {
+        await getItemCraftFromRustLabsToDatabase(item);
+    }
 }
 
 async function getItemCraftFromRustLabsToDatabase(item: Item): Promise<void> {
@@ -175,12 +177,10 @@ async function getItemCraftFromRustLabsToDatabase(item: Item): Promise<void> {
 
     const exchangesTrs = exchangeDiv.querySelectorAll('tbody tr');
 
-    let promises: Promise<any>[] = [];
+    for (const exchangeTr of Array.from(exchangesTrs)) {
+        const bluePrintName = exchangeTr.querySelector('td:nth-child(2)')?.getAttribute('data-value') || '';
 
-    Array.from(exchangesTrs).forEach((exchangeTr) => {
-        const bluePrintName = exchangeTr.querySelector('.item-cell img')?.getAttribute('alt') || '';
-
-        if (!bluePrintName.includes(item.name)) {
+        if (bluePrintName.includes(item.name)) {
             // Crafted item informations
             const quantitySpan = exchangeTr.querySelector('.item-cell .text-in-icon')?.textContent || null;
             const craftedQuantity = quantitySpan ? parseInt(quantitySpan.trim().replace('×', '')) : 1;
@@ -192,11 +192,9 @@ async function getItemCraftFromRustLabsToDatabase(item: Item): Promise<void> {
             let workbenchLevel = exchangeTr.querySelector('td:nth-child(5) .text-in-icon')?.textContent || 0;
             if (typeof workbenchLevel === 'string') workbenchLevel = workbenchLevel.length;
 
-            promises.push(createCraftAndIngredients(item.id, craftedQuantity, craftDuration, workbenchLevel, exchangeTr))
+            await createCraftAndIngredients(item.id, craftedQuantity, craftDuration, workbenchLevel, exchangeTr);
         }
-    });
-
-    await Promise.all(promises);
+    };
 }
 
 export async function getItemsFromRustlabs(): Promise<Resources> {
@@ -216,7 +214,7 @@ export async function getItemsFromRustlabs(): Promise<Resources> {
 }
 
 function getItemUrlName(itemName: string): string {
-    return itemName.toLowerCase().replace(' ', '-');
+    return itemName.toLowerCase().replaceAll(' ', '-');
 }
 
 async function getItemScrapPriceFromRustLabsToDatabase(item: Item): Promise<void> {
@@ -300,6 +298,72 @@ async function getItemShoppingListFromRustLabs(item: Item): Promise<void> {
     });
 }
 
+async function getItemRecycleFromRustLabsToDatabase(item: any): Promise<void> {
+    const pageUrl = `https://rustlabs.com/item/${getItemUrlName(item.name)}#tab=recycle`;
+
+    const response = await fetch(pageUrl);
+    const data = await response.text();
+
+    const dom = new JSDOM(data);
+
+    const exchangeDiv = dom.window.document.querySelector('div[data-name="recycle"]');
+
+    if (!exchangeDiv) return;
+
+    const exchangesTrs = exchangeDiv.querySelectorAll('tbody tr');
+
+    const trsArray = Array.from(exchangesTrs);
+
+    for (const exchangeTr of trsArray) {
+        const yieldItems = exchangeTr.querySelectorAll('td:nth-child(2) > a');
+
+        const recycler = await prisma.recycler.create({
+            data: {
+                Item: {
+                    connect: {
+                        id: item.id
+                    }
+                }
+            }
+        });
+
+        for (const link of Array.from(yieldItems)) {
+            const itemName = link.querySelector("img")!.getAttribute('title') || '';
+            const itemQuantity = parseInt(link.querySelector('.text-in-icon')?.textContent?.replace('×', '') || '1');
+            const yieldItemId = await searchItemIdFromName(itemName);
+
+            if (!yieldItemId) return;
+
+            await prisma.recyclerYield.create({
+                data: {
+                    recycler: {
+                        connect: {
+                            id: recycler.id
+                        }
+                    },
+                    yieldItem: {
+                        connect: {
+                            id: yieldItemId
+                        }
+                    },
+                    quantity: itemQuantity
+                }
+            })
+        }
+    };
+}
+
+export async function getRecycleValuesFromRustlabs(): Promise<void> {
+    // Clean the recycle databases
+    await prisma.recycler.deleteMany();
+
+    const items = await getItemsFromDatabase();
+
+    for (const item of items) {
+        await getItemRecycleFromRustLabsToDatabase(item);
+    }
+}
+
 export async function getShoppingListFromRustLabs(): Promise<void> {
     const items = await getItemsFromDatabase();
 
@@ -310,4 +374,8 @@ export async function getShoppingListFromRustLabs(): Promise<void> {
     })
 
     await Promise.all(promises);
+}
+
+export async function searchMissingCrafts(): Promise<void> {
+    await getCraftsFromRustlabs(false);
 }

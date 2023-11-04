@@ -3,6 +3,55 @@ import { Item, PrismaClient } from "@prisma/client";
 
 const prisma = new PrismaClient()
 
+export const calculateItemsPriceFromRecycleValues = async (): Promise<void> => {
+    const items = await prisma.item.findMany();
+
+    for (const item of items) {
+        // Iteam alreay has a price
+        if (item.scrapValue > 0) continue;
+
+        if (item.name === "SMG Body") {
+            console.log("item: ", item);
+        }
+
+        const recyclers = await prisma.recycler.findMany({
+            include: {
+                RecyclerYield: {
+                    include: {
+                        yieldItem: true
+                    }
+                }
+            },
+            where: {
+                ItemId: item.id
+            }
+        });
+
+        if (recyclers.length === 0) continue;
+
+        // Test if any recycler item has no scrap value
+        let itemValue = 0;
+
+        for (const recycler of recyclers) {
+
+            for (const recyclerYield of recycler.RecyclerYield) {
+                if (recyclerYield.yieldItem.scrapValue === 0) continue;
+
+                itemValue += recyclerYield.yieldItem.scrapValue * recyclerYield.quantity;
+            }
+        }
+
+        await prisma.item.update({
+            where: {
+                id: item.id
+            },
+            data: {
+                scrapValue: parseFloat((itemValue * 2).toFixed(3))
+            }
+        })
+    }
+}
+
 export const calculateItemsScrapValueFromShoppingFromOtherItems = async (): Promise<void> => {
 
     let itemsModified: number = 0;
@@ -32,10 +81,7 @@ export const calculateItemsScrapValueFromShoppingFromOtherItems = async (): Prom
             if (saleItem.costItemId !== scrapItem.id) {
                 // Search the cost item value
                 const costItem = items.find((item) => item.id === saleItem.costItemId);
-                if (!costItem) {
-                    console.log("Cost item not found");
-                    console.log("Item id: " + saleItem.costItemId);
-                } else {
+                if (costItem) {
                     itemScrapValue += (saleItem.costItemQuantity * costItem.scrapValue) / saleItem.saleItemQuantity;
                     shoppingCount++;
                 }
@@ -46,10 +92,7 @@ export const calculateItemsScrapValueFromShoppingFromOtherItems = async (): Prom
             if (costItem.saleItemId !== scrapItem.id) {
                 // Search the cost item value
                 const saleItem = items.find((item) => item.id === costItem.saleItemId);
-                if (!saleItem) {
-                    console.log("sale item not found");
-                    console.log("Item id: " + costItem.saleItemId);
-                } else {
+                if (saleItem) {
                     itemScrapValue += (costItem.saleItemQuantity * saleItem.scrapValue) / costItem.costItemQuantity;
                     shoppingCount++;
                 }
@@ -73,8 +116,6 @@ export const calculateItemsScrapValueFromShoppingFromOtherItems = async (): Prom
     })
 
     await Promise.all(promises);
-
-    console.log("items quantity modified: ", itemsModified);
 }
 
 export const calculateItemsScrapValueFromShopping = async (): Promise<void> => {
@@ -156,6 +197,59 @@ export const getItemsFromDatabaseOrderedByCategory = async (): Promise<Resources
     })
 
     return resources;
+}
+
+const getItemScrapFromCrafting = async (item: any) => {
+    // Item has already a scrap value or has no craft recipe
+    if (item.scrapValue !== 0 || item.Craft.length === 0) return;
+
+    let itemScrapValue: number = 0;
+    let craftAnalysedQuantity: number = 0;
+
+    // For the moment, we stop the functions if we don't have all ingredients values
+    for (const craft of item.Craft) {
+        let craftScrapValue: number = 0;
+
+        for (const craftIngredient of craft.CraftIngredient) {
+            if (craftIngredient.ingredient.scrapValue === 0) return;
+
+            craftScrapValue += craftIngredient.ingredient.scrapValue * craftIngredient.ingredientQuantity;
+        }
+
+        itemScrapValue += craftScrapValue;
+        craftAnalysedQuantity++;
+    }
+
+    itemScrapValue = itemScrapValue / craftAnalysedQuantity;
+
+    await prisma.item.update({
+        where: {
+            id: item.id
+        },
+        data: {
+            scrapValue: parseFloat(itemScrapValue.toFixed(3))
+        }
+    })
+}
+
+export const getItemsScrapFromCrafting = async (): Promise<void> => {
+    const itemsWithCrafts = await prisma.item.findMany({
+        include: {
+            Craft: {
+                include: {
+                    CraftIngredient: {
+                        include: {
+                            ingredient: true
+                        }
+                    }
+                }
+            }
+        }
+    });
+
+    for (const item of itemsWithCrafts) {
+        await getItemScrapFromCrafting(item);
+    }
 }
 
 export const saveItemCategories = async (items: Resources) => {

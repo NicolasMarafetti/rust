@@ -40,12 +40,30 @@ model Item {
   costItems       Shopping[]        @relation("CostItemRelation")
   Craft           Craft[]
   CraftIngredient CraftIngredient[]
+  Recycler        Recycler[]
+  RecyclerYield   RecyclerYield[]
 }
 
 model ItemCategory {
   id   String @id @default(auto()) @map("_id") @db.ObjectId
   name String
   Item Item[]
+}
+
+model Recycler {
+  id            String          @id @default(auto()) @map("_id") @db.ObjectId
+  Item          Item            @relation(fields: [ItemId], references: [id])
+  ItemId        String          @db.ObjectId
+  RecyclerYield RecyclerYield[]
+}
+
+model RecyclerYield {
+  id          String   @id @default(auto()) @map("_id") @db.ObjectId
+  recycler    Recycler @relation(fields: [recyclerId], references: [id], onDelete: Cascade)
+  recyclerId  String   @db.ObjectId
+  yieldItem   Item     @relation(fields: [yieldItemId], references: [id])
+  yieldItemId String   @db.ObjectId
+  quantity    Int
 }
 
 model Shopping {
